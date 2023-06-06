@@ -4,14 +4,13 @@ This file manages OAuthbasedUserManager. A hook for OctoPrint plugin.
 import logging
 
 import requests
-from requests_oauthlib import OAuth2Session
-from oauthlib.oauth2 import OAuth2Error
+from oauthlib.oauth2 import WebApplicationClient
+from oauthlib.oauth2.rfc6749.errors import OAuth2Error
+
+from octoprint.users import UserManager, User, LocalProxy, SessionUser
 
 
-from octoprint.users import FilebasedUserManager, User, UserManager, LocalProxy, SessionUser
-
-
-class OAuthbasedUserManager(FilebasedUserManager):
+class OAuthbasedUserManager(UserManager):
     """
     OAuthbasedUserManager replaces OctoPrints FilebasedUserManager
     """
@@ -33,8 +32,8 @@ class OAuthbasedUserManager(FilebasedUserManager):
         except KeyError:
             self.token_headers = None
 
-        # Init FilebasedUserManager, other methods are needed for OctoPrint
-        FilebasedUserManager.__init__(self)
+        # Init UserManager
+        UserManager.__init__(self)
 
     def logout_user(self, user):
         """
@@ -43,20 +42,22 @@ class OAuthbasedUserManager(FilebasedUserManager):
         OAuthbasedUserManager.logger.info("OAuth Logging out")
         UserManager.logout_user(self, user)
 
-    def get_token(self, oauth2_session, code, client_id, client_secret):
+    def get_token(self, oauth2_session, code, client_secret):
         """
-        This method use oauth2_session to fetch access token from authorization server.
-        if the token_json contains 'access_token' then it returns it. If access_token is missing,
-        or something is wrong, return None
+        This method uses oauth2_session to fetch an access token from the authorization server.
+        If the token_json contains 'access_token', then it returns it. If access_token is missing
+        or something is wrong, return None.
         """
 
         try:
-            token_json = oauth2_session.fetch_token(self.path_for_token,
-                                                    authorization_response="authorization_code",
-                                                    code=code,
-                                                    client_id=client_id,
-                                                    client_secret=client_secret,
-                                                    headers=self.token_headers)
+            token_params = {
+                "grant_type": "authorization_code",
+                "code": code,
+                "client_secret": client_secret
+            }
+            token_json = oauth2_session.fetch_token(self.path_for_token, authorization_response=None,
+                                                    code=code, headers=self.token_headers,
+                                                    client_secret=client_secret, **token_params)
 
             try:
                 # token is OK
@@ -75,16 +76,16 @@ class OAuthbasedUserManager(FilebasedUserManager):
 
         return None
 
-    def get_username(self, oauth2_session):
+    def get_username(self, oauth2_session, access_token):
         """
-        This method make a request to resource server.
-        Then tries if specific username_key is OK and return username.
+        This method makes a request to the resource server.
+        Then tries if the specific username_key is OK and returns the username.
         """
         try:
             # GET user data from resource server
             headers = {
-                "Authorization" : "Bearer " + oauth2_session.access_token
-            } 
+                "Authorization": "Bearer " + access_token
+            }
             response = requests.get(self.path_user_info, headers=headers)
             data = response.json()
 
@@ -96,9 +97,8 @@ class OAuthbasedUserManager(FilebasedUserManager):
                 OAuthbasedUserManager.logger.error("User data does not contain username key,"
                                                    "you can try to find it here:")
                 OAuthbasedUserManager.logger.error(data)
-        except requests.RequestException:
-            OAuthbasedUserManager.logger.error(
-                "error")
+        except (requests.RequestException, ValueError):
+            OAuthbasedUserManager.logger.error("Error making request to the resource server")
 
         return None
 
@@ -108,9 +108,9 @@ class OAuthbasedUserManager(FilebasedUserManager):
         Users user.get_id() should be dict containing redirect_uri and code.
         It is obtained by view model in static/js folder.
         Method gets specified data from config yaml - client_id and client_secret, then
-        start OAuth2Session from requests_oauthlib library. Using the library method
-        fetch the access token using method get_token.
-        After that, user is added into users.yaml config file.
+        starts WebApplicationClient from oauthlib library. Using the library method
+        fetch the access token using the method get_token.
+        After that, the user is added into users.yaml config file.
         """
         self._cleanup_sessions()
 
@@ -134,20 +134,19 @@ class OAuthbasedUserManager(FilebasedUserManager):
                 OAuthbasedUserManager.logger.error("Code or redirect_uri not found")
                 return None
 
-            client_id = self.oauth2[redirect_uri]["client_id"]
-            client_secret = self.oauth2[redirect_uri]["client_secret"]
-            oauth2_session = OAuth2Session(client_id,
-                                           redirect_uri=redirect_uri)
-            access_token = self.get_token(oauth2_session, code, client_id, client_secret)
+            client_id = self.oauth2["client_id"]
+            client_secret = self.oauth2["client_secret"]
+            oauth2_session = WebApplicationClient(client_id)
+            access_token = self.get_token(oauth2_session, code, client_secret)
 
             if access_token is None:
                 return None
 
-            username = self.get_username(oauth2_session)
+            username = self.get_username(oauth2_session, access_token)
             if username is None:
                 OAuthbasedUserManager.logger.error("Username none")
                 return None
-            user = FilebasedUserManager.findUser(self, username)
+            user = self.findUser(username)
 
             if user is None:
                 self.addUser(username, "", True, ["user"])
@@ -174,14 +173,14 @@ class OAuthbasedUserManager(FilebasedUserManager):
 
     def findUser(self, userid=None, apikey=None, session=None):
         """
-        Find user using FilebasedUserManager, else set temporary user.
-        This is because of implementation of server/api.
+        Find user using UserManager, else set temporary user.
+        This is because of the implementation of server/api.
         """
-        user = FilebasedUserManager.findUser(self, userid, apikey, session)
+        user = UserManager.findUser(self, userid, apikey, session)
         if user is not None:
             return user
 
-        # making temporary user because of implementation of api
+        # making temporary user because of the implementation of api
         # and we need to pass our code from OAuth to login_user
         # api login could be found in server/api/__init__.py
         user = User(userid, "", 1, ["user"])
