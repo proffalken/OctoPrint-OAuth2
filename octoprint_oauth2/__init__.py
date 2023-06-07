@@ -47,6 +47,7 @@ def user_factory_hook(components, settings, *args, **kwargs):
 
 
 __plugin_name__ = "OAuth"
+__plugin_pythoncompat__ = ">2.7,<4"
 __plugin_implementation__ = OAuth2Plugin()
 __plugin_hooks__ = {
     "octoprint.users.factory": user_factory_hook
