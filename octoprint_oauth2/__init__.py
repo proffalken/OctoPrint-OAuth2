@@ -4,7 +4,7 @@ for application OctoPrint
 """
 import logging
 from octoprint import plugin
-from oauth_user_manager import OAuthBasedUserManager
+from octoprint_oauth2.oauth_user_manager import OAuthBasedUserManager
 
 
 class OAuth2Plugin(plugin.StartupPlugin, plugin.TemplatePlugin,
