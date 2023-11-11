@@ -7,6 +7,7 @@ import requests
 from oauthlib.oauth2 import WebApplicationClient
 from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 
+from octoprint.access.groups import FilebasedGroupManager
 from octoprint.access.users import UserManager, User, LocalProxy, SessionUser
 
 
@@ -32,8 +33,11 @@ class OAuthBasedUserManager(UserManager):
         except KeyError:
             self.token_headers = None
 
+        # Init Group Manager
+        group_manager = FilebasedGroupManager()
+
         # Init UserManager
-        UserManager.__init__(self)
+        UserManager.__init__(self, group_manager)
 
     def logout_user(self, user):
         """
