@@ -37,6 +37,7 @@ $(function() {
             e.stopPropagation();
         });
 
+
         self.loginState = parameters[0];
         self.settings = parameters[1];
         self.control = parameters[2];
@@ -44,12 +45,20 @@ $(function() {
 
         self.loginState.login = function () {
 
-            const oauth_plugin_settings = self.settings.settings.plugins.oauth2;
+	    const settings = self.settings
+		console.log("SETTINGS");
+	    console.log(settings);
+            const oauth_plugin_settings = settings.settings;
+		console.log("PLUGIN SETTINGS");
+	    console.log(oauth_plugin_settings);
 
             const redirect_uri = parseUrl(window.location.href).origin + "/";
 
             const client_id = oauth_plugin_settings[redirect_uri].client_id();
             const login_path = oauth_plugin_settings.login_path();
+
+	    alert("Client ID: " + client_id);
+	    alert("Login Path: " + login_path);
 
             if(!client_id || !login_path){
                 alert("Probably bad configuration file");
@@ -62,15 +71,19 @@ $(function() {
             const params = ['response_type=code', 'client_id=' + client_id, 'redirect_uri=' + redirect_uri, 'state=' + state];
             const query = params.join('&');
             const url = login_path + "?" + query;
+	    alert(url);
 
             window.location.replace(url);
         };
+
+	self.loginState.login();
 
         self.loginState.logout = function() {
             var provider = parseUrl(self.settings.settings.plugins.oauth2.login_path()).host;
 
             return OctoPrint.browser.logout()
                 .done(function(response) {
+		    alert("Attempting to logout");
 
                     new PNotify({title: gettext("Logout from OctoPrint successful"), text: gettext("You are now logged out"), type: "success"});
                     new PNotify({title: gettext("OAuth 2.0 Logout"), text: gettext("To log out completely, make sure to log out from OAuth 2.0 provider: " + provider), hide: false});
@@ -94,13 +107,13 @@ $(function() {
                return gettext("Login via OAuth 2.0");
            }
         });
-
         const code = getParameterByName("code",window.location.href);
         const stateFromOAuth = getParameterByName("state",
             window.location.href);
 
 
-        if(!!stateFromOAuth && !!code){
+        if(!!stateFromOAuth === false && !!code === false){
+	    alert("OAuth was unset, trying to set it now");
             const state = localStorage.getItem("state");
             localStorage.removeItem("state");
             if (stateFromOAuth != state) {
@@ -139,6 +152,7 @@ $(function() {
                                 text: gettext("User unknown or wrong password"),
                                 type: "error"
                             });
+   			    alert("401 - User unknown or wrong password");
                             break;
                         }
                         case 403: {
@@ -147,13 +161,13 @@ $(function() {
                                 text: gettext("Your account is deactivated"),
                                 type: "error"
                             });
+   			    alert("403 - Account deactivated - " + url + " : " + parameters['code'] + " : " + parameters['redirect_uri']);
                             break;
                         }
                     }
                 });
         }
     }
-
 
     self.onStartup = function () {
         self.elementOAuthLogin = $("#oauth_login");
