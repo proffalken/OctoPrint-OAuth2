@@ -1,5 +1,5 @@
 """
-This file manages OAuthbasedUserManager. A hook for OctoPrint plugin.
+This file manages OAuthBasedUserManager. A hook for OctoPrint plugin.
 """
 import logging
 
@@ -10,14 +10,14 @@ from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 from octoprint.access.users import UserManager, User, LocalProxy, SessionUser
 
 
-class OAuthbasedUserManager(UserManager):
+class OAuthBasedUserManager(UserManager):
     """
-    OAuthbasedUserManager replaces OctoPrints FilebasedUserManager
+    OAuthBasedUserManager replaces OctoPrints FilebasedUserManager
     """
     logger = logging.getLogger("octoprint.plugins." + __name__)
 
     def __init__(self, components, settings):
-        OAuthbasedUserManager.logger.info("Initializing OAuthbasedUserManager")
+        OAuthBasedUserManager.logger.info("Initializing OAuthBasedUserManager")
         self._components = components
         self._settings = settings
 
@@ -39,7 +39,7 @@ class OAuthbasedUserManager(UserManager):
         """
         Prints log into console, then uses UserManager.logout_user
         """
-        OAuthbasedUserManager.logger.info("OAuth Logging out")
+        OAuthBasedUserManager.logger.info("OAuth Logging out")
         UserManager.logout_user(self, user)
 
     def get_token(self, oauth2_session, code, client_secret):
@@ -66,13 +66,13 @@ class OAuthbasedUserManager(UserManager):
             except KeyError:
                 try:
                     error = token_json["error"]
-                    OAuthbasedUserManager.logger.error("Error of access token: %s", error)
+                    OAuthBasedUserManager.logger.error("Error of access token: %s", error)
                 except KeyError:
-                    OAuthbasedUserManager.logger.error("Error of access token, "
+                    OAuthBasedUserManager.logger.error("Error of access token, "
                                                        "error message not found")
 
         except OAuth2Error:
-            OAuthbasedUserManager.logger.error("Bad authorization_code")
+            OAuthBasedUserManager.logger.error("Bad authorization_code")
 
         return None
 
@@ -94,11 +94,11 @@ class OAuthbasedUserManager(UserManager):
                 login = data[self.username_key]
                 return login
             except (KeyError, TypeError):
-                OAuthbasedUserManager.logger.error("User data does not contain username key,"
+                OAuthBasedUserManager.logger.error("User data does not contain username key,"
                                                    "you can try to find it here:")
-                OAuthbasedUserManager.logger.error(data)
+                OAuthBasedUserManager.logger.error(data)
         except (requests.RequestException, ValueError):
-            OAuthbasedUserManager.logger.error("Error making request to the resource server")
+            OAuthBasedUserManager.logger.error("Error making request to the resource server")
 
         return None
 
@@ -131,7 +131,7 @@ class OAuthbasedUserManager(UserManager):
                 redirect_uri = user.get_id()['redirect_uri']
                 code = user.get_id()['code']
             except KeyError:
-                OAuthbasedUserManager.logger.error("Code or redirect_uri not found")
+                OAuthBasedUserManager.logger.error("Code or redirect_uri not found")
                 return None
 
             client_id = self.oauth2["client_id"]
@@ -144,7 +144,7 @@ class OAuthbasedUserManager(UserManager):
 
             username = self.get_username(oauth2_session, access_token)
             if username is None:
-                OAuthbasedUserManager.logger.error("Username none")
+                OAuthBasedUserManager.logger.error("Username none")
                 return None
             user = self.findUser(username)
 
@@ -168,7 +168,7 @@ class OAuthbasedUserManager(UserManager):
         """
         Override checkPassword method. Return always true. Use authorization of OAuth 2.0 instead
         """
-        OAuthbasedUserManager.logger.info("Logging in via OAuth 2.0")
+        OAuthBasedUserManager.logger.info("Logging in via OAuth 2.0")
         return True
 
     def findUser(self, userid=None, apikey=None, session=None):
