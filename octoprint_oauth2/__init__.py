@@ -30,11 +30,33 @@ class OAuth2Plugin(plugin.StartupPlugin, plugin.TemplatePlugin,
         self._logger.info("OAuth 2.0 get assets")
         return {"js": ["js/oauth2.js"]}
 
+    def get_settings_defaults(self):
+        config =dict( 
+                access_token_query_key = "token",
+                endpoint1 = {
+                    "client_id": 0, 
+                    "client_secret": "12345"
+                    },
+                login_path = "http://login/",
+                token_headers = {
+                    "Accept": "application/json"
+                    },
+                token_path = "http://token/",
+                user_info_path = "http://userinfo",
+                username_key = "profile"
+                )
+        self._logger.info(f"Config is of type: {dir(config)}")
+        return config
+
+
     def get_settings_restricted_paths(self):
         """
         Plugin set restricted paths of config.yaml
         """
         return {"admin": [["plugins", "oauth2"]]}
+
+    def on_after_startup(self):
+        self._logger.info("Oauth2 Loaded and ready")
 
 
 def user_factory_hook(components, settings, *args, **kwargs):
@@ -50,5 +72,5 @@ __plugin_name__ = "OAuth"
 __plugin_pythoncompat__ = ">2.7,<4"
 __plugin_implementation__ = OAuth2Plugin()
 __plugin_hooks__ = {
-    "octoprint.users.factory": user_factory_hook
+    "octoprint.access.users.factory": user_factory_hook
 }
